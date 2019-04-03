@@ -1,1 +1,4 @@
+nbproject
 bin
+*.log
+*.inc
