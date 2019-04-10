@@ -15,31 +15,45 @@ using namespace std;
 static set<socket_p> connections;
 static mutex connection_mtx;
 
+static string response_msg;
+static bool exit_needed;
+
 processor_t execute_action;
 bool alive = true;
 
-static bool action_hello(const string& args)
+static bool action_exit(const string& args)
 {
-    return args.compare("world") == 0;
+    if (args.empty())
+    {
+        exit_needed = true;
+        return true;
+    }
+    return false;
+}
+
+static bool action_version(const string& args)
+{
+    if (args.empty())
+    {
+        response_msg += "Version 0.1";
+        return true;
+    }
+    return false;
 }
 
 void register_actions(Server& server)
 {
-    server.registerAction("hello", action_hello);
+    server.registerAction("exit", action_exit);
+    server.registerAction("version", action_version);
 }
 
 string command_switcher(const Server& server, const string& command, const string& args)
 {
-    if (args.empty())
-    {
-        if (command.compare("exit") == 0)
-            return "";
-        else if (command.compare("version") == 0)
-            return "Version 0.1";
-    }
+    exit_needed = false;
+    response_msg = "";
 
     ts_action action = server.getAction(command);
-    return (action(args)) ? "Ok" : "ERROR";
+    return (action && action(args)) ? "OK" : "ERROR";
 }
 
 tuple<string, string> parse_command(const string& request)
@@ -104,21 +118,30 @@ static void processor()
                     clog << "execute_action was not registered" << endl;
                 }
 
-                if (!response.empty())
-                {
-                    response.push_back('\n');
-                    if (send(client->sock(), response.data(), response.size(), 0) < 0)
-                    {
-                        clog << "Send failed" << endl;
-                        continue;
-                    }
-                }
-                else
+
+                if (exit_needed)
                 {
                     connection_mtx.lock();
                     connections.erase(client);
                     connection_mtx.unlock();
                     clog << "Ending connection" << endl;
+                }
+                else
+                {
+                    if (!response_msg.empty())
+                    {
+                        response_msg.push_back('\n');
+                        if (send(client->sock(), response_msg.data(), response_msg.size(), 0) < 0)
+                        {
+                            clog << "Send failed" << endl;
+                        }
+                    }
+
+                    response.push_back('\n');
+                    if (send(client->sock(), response.data(), response.size(), 0) < 0)
+                    {
+                        clog << "Send failed" << endl;
+                    }
                 }
             }
         }

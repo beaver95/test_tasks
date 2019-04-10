@@ -19,12 +19,8 @@ ts_action Server::getAction(const string& action_name) const
     {
         return action->second;
     }
-    static ts_action invalidAction = [](const string& params)->bool
-    {
-        clog << "Invalid action" << endl;
-        return false;
-    };
-    return invalidAction;
+
+    return 0;
 }
 
 sockaddr_in Server::getSrcSockaddr()
@@ -36,7 +32,7 @@ sockaddr_in Server::getSrcSockaddr()
 Server Server::load(istream& in)
 {
     string srcAddress = "0.0.0.0";
-    unsigned srcPort = 56789;
+    unsigned srcPort = 5678;
     unsigned maxConnections = 3;
 
     in >> srcAddress >> srcPort >> maxConnections;
