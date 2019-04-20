@@ -26,9 +26,9 @@ void register_actions(Server& server);
 
 string command_switcher(const Server& server, const string& command, const string& args);
 
-tuple<string, string> parse_command(const string& request);
+tuple<string, string> parse_command(const string& request, const string& eol);
 
-void listener(Server server);
+void listener(const Server& server);
 
 #endif /* TS_CORE_HPP */
 

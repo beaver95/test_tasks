@@ -56,10 +56,12 @@ string command_switcher(const Server& server, const string& command, const strin
     return (action && action(args)) ? "OK" : "ERROR";
 }
 
-tuple<string, string> parse_command(const string& request)
+tuple<string, string> parse_command(const string& request, const string& eol)
 {
-    string command, args;
-    regex request_line("^([^ ]+)( ([^\n]+))?\n$");
+    string command, args, eolStr;
+    eolStr = eol.size() ? eol : "\n";
+    string request_str = string() + "^([^ ]+)( ([^" + eolStr[0] + "]+))?" + eolStr + "$";
+    regex request_line(request_str);
     smatch match;
     if (regex_match(request, match, request_line))
     {
@@ -68,10 +70,14 @@ tuple<string, string> parse_command(const string& request)
         clog << "args    : " << match[3] << "." << endl;
         args = match[3];
     }
+    else
+    {
+        clog << "Parsing failed: " << request << endl;
+    }
     return tuple<string, string>(command, args);
 }
 
-static void processor()
+static void processor(const Server& server)
 {
     clog << "processing started" << endl;
     unsigned char buff[4096];
@@ -106,7 +112,7 @@ static void processor()
                 string request((char*)buff, rval);
                 string command, args, response;
 
-                tie(command, args) = parse_command(request);
+                tie(command, args) = parse_command(request, eoltype2str(server.eolType()));
 
                 if (execute_action)
                 {
@@ -130,14 +136,14 @@ static void processor()
                 {
                     if (!response_msg.empty())
                     {
-                        response_msg.push_back('\n');
+                        response_msg += eoltype2str(server.eolType());
                         if (send(client->sock(), response_msg.data(), response_msg.size(), 0) < 0)
                         {
                             clog << "Send failed" << endl;
                         }
                     }
 
-                    response.push_back('\n');
+                    response += eoltype2str(server.eolType());
                     if (send(client->sock(), response.data(), response.size(), 0) < 0)
                     {
                         clog << "Send failed" << endl;
@@ -149,7 +155,7 @@ static void processor()
     clog << "processing stopped" << endl;
 }
 
-void listener(Server server)
+void listener(const Server& server)
 {
     shared_ptr<thread> processor_thread;
     socket_p sock = make_shared<Socket>();
@@ -208,7 +214,7 @@ void listener(Server server)
 
         if (processor_thread == nullptr && !connections.empty())
         {
-            processor_thread = make_shared<thread>(processor);
+            processor_thread = make_shared<thread>(processor, server);
         }
     } while(alive);
 

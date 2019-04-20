@@ -17,32 +17,42 @@ using namespace std;
 
 typedef function<bool(const string&)> ts_action;
 
+enum class EndOfLineType : int {
+    CR = 0,
+    LF,
+    CRLF,
+};
+
+string eoltype2str (EndOfLineType eol);
+
 class Server
 {
 public:
-    Server(string srcAddress, unsigned srcPort, unsigned maxConnections);
+    Server(string srcAddress, unsigned srcPort, unsigned maxConnections, EndOfLineType eolType);
     virtual ~Server();
 
     inline string srcAddress() const { return _srcAddress; }
     inline unsigned srcPort() const { return _srcPort; }
     inline unsigned maxConnections() const { return _maxConnections; }
+    inline EndOfLineType eolType() const { return _eolType; }
 
     void registerAction(const string& action_name, ts_action action);
 
     ts_action getAction(const string& action_name) const;
-    sockaddr_in getSrcSockaddr();
+    sockaddr_in getSrcSockaddr() const;
 
     static Server load(istream& in);
     void save(ostream& out);
 
 protected:
 
-    sockaddr_in getSockaddr(string ip, unsigned port);
+    sockaddr_in getSockaddr(string ip, unsigned port) const;
 
 private:
     string _srcAddress;
     unsigned _srcPort;
     unsigned _maxConnections;
+    EndOfLineType _eolType;
     map<string, ts_action> _actionCbs;
 };
 

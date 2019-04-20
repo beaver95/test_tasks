@@ -24,7 +24,10 @@ int main(int argc, char** argv)
     ifstream input("server.conf", ifstream::in);
 
     Server server = Server::load(input);
-    clog << "Configuted: " << server.srcAddress() << " " << server.srcPort() << endl;
+    clog << "Configuration details" << endl;
+    clog << "Address          - " << server.srcAddress() << ":" << server.srcPort() << endl;
+    clog << "Max. connections - " << server.maxConnections() << endl;
+    clog << "EOL type         - " << int(server.eolType()) << endl << endl;
 
     register_actions(server);
     execute_action = bind(command_switcher, ref(server), _1, _2);
@@ -39,7 +42,8 @@ int main(int argc, char** argv)
         if (execute_action)
         {
             string command, args;
-            tie(command, args) = parse_command(request + "\n");
+            string eol = eoltype2str(server.eolType());
+            tie(command, args) = parse_command(request + eol, eol);
             cout << execute_action(command, args) << endl;
         }
     } while (request.compare("exit") != 0);

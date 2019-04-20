@@ -2,8 +2,23 @@
 
 using namespace std;
 
-Server::Server(string srcAddress, unsigned srcPort, unsigned maxConnections)
-    : _srcAddress(srcAddress), _srcPort(srcPort), _maxConnections(maxConnections), _actionCbs() {}
+string eoltype2str (EndOfLineType eol)
+{
+    switch (eol)
+    {
+        case EndOfLineType::CR:
+            return "\r";
+        case EndOfLineType::LF:
+            return "\n";
+        case EndOfLineType::CRLF:
+            return "\r\n";
+        default:
+            return "";
+    }
+}
+
+Server::Server(string srcAddress, unsigned srcPort, unsigned maxConnections, EndOfLineType eolType)
+    : _srcAddress(srcAddress), _srcPort(srcPort), _maxConnections(maxConnections), _eolType(eolType), _actionCbs() {}
 
 Server::~Server() {}
 
@@ -23,7 +38,7 @@ ts_action Server::getAction(const string& action_name) const
     return 0;
 }
 
-sockaddr_in Server::getSrcSockaddr()
+sockaddr_in Server::getSrcSockaddr() const
 {
     static sockaddr_in srcSockaddr = getSockaddr(_srcAddress, _srcPort);
     return srcSockaddr;
@@ -34,18 +49,19 @@ Server Server::load(istream& in)
     string srcAddress = "0.0.0.0";
     unsigned srcPort = 5678;
     unsigned maxConnections = 3;
+    int eolType = int(EndOfLineType::CR);
 
-    in >> srcAddress >> srcPort >> maxConnections;
+    in >> srcAddress >> srcPort >> maxConnections >> eolType;
 
-    return Server(srcAddress, srcPort, maxConnections);
+    return Server(srcAddress, srcPort, maxConnections, static_cast<EndOfLineType>(eolType));
 }
 
 void Server::save(ostream& out)
 {
-    out << _srcAddress << ' ' << _srcPort << ' ' << _maxConnections << endl;
+    out << _srcAddress << ' ' << _srcPort << ' ' << _maxConnections << ' ' << int(_eolType) << endl;
 }
 
-sockaddr_in Server::getSockaddr(string ip, unsigned port)
+sockaddr_in Server::getSockaddr(string ip, unsigned port) const
 {
     sockaddr_in address;
 
