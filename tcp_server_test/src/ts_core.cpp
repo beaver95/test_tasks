@@ -91,6 +91,8 @@ static void processor(const Server& server)
         connection_mtx.unlock();
         for (const socket_p& client : connections_ro)
         {
+
+            this_thread::sleep_for(chrono::milliseconds(1));
             rval = recv(client->sock(), buff, sizeof(buff), MSG_DONTWAIT);
 
             if (rval == 0)
@@ -178,8 +180,9 @@ void listener(const Server& server)
     {
         sockaddr_in client;
         socklen_t clientsize = sizeof(client);
-        int accepted_sock = accept(sock->sock(), (sockaddr*)&client, &clientsize);
 
+        this_thread::sleep_for(chrono::milliseconds(1));
+        int accepted_sock = accept(sock->sock(), (sockaddr*)&client, &clientsize);
 
         if (processor_thread != nullptr && connections.empty())
         {

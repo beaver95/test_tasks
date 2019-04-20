@@ -49,9 +49,14 @@ Server Server::load(istream& in)
     string srcAddress = "0.0.0.0";
     unsigned srcPort = 5678;
     unsigned maxConnections = 3;
-    int eolType = int(EndOfLineType::CR);
+    unsigned eolType = int(EndOfLineType::CR);
 
     in >> srcAddress >> srcPort >> maxConnections >> eolType;
+    if (eolType >= unsigned(EndOfLineType::MAX))
+    {
+        clog << "Undefined type of line ending. CR will be used" << endl;
+        eolType = unsigned(EndOfLineType::CR);
+    }
 
     return Server(srcAddress, srcPort, maxConnections, static_cast<EndOfLineType>(eolType));
 }

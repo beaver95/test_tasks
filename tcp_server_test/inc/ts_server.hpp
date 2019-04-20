@@ -17,10 +17,11 @@ using namespace std;
 
 typedef function<bool(const string&)> ts_action;
 
-enum class EndOfLineType : int {
+enum class EndOfLineType : unsigned {
     CR = 0,
     LF,
     CRLF,
+    MAX
 };
 
 string eoltype2str (EndOfLineType eol);
