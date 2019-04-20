@@ -1,6 +1,7 @@
 #include "../inc/ps_core.hpp"
 
 #include <fcntl.h>
+#include <poll.h>
 #include <unistd.h>
 #include <thread>
 #include <chrono>
@@ -42,41 +43,65 @@ static void processor()
 
     while (!connections.empty())
     {
-        
         connection_mtx.lock();
         map<socket_p, socket_p> connections_ro(connections);
         connection_mtx.unlock();
-        for (const pair<socket_p, socket_p>& connection : connections_ro)
+
+        vector<pollfd> fds(connections_ro.size(), {0});
+        map<int, socket_p> fd2con;
+        int idx = 0;
+        for(const pair<socket_p, socket_p>& connection : connections_ro)
         {
-            socket_p client, server;
-            tie(client, server) = connection;
-            rval = recv(client->sock(), buff, sizeof(buff), MSG_DONTWAIT);
+            socket_p client = connection.first;
+            fds[idx].fd = client->sock();
+            fds[idx].events = POLLIN;
+            fd2con[idx] = client;
+            ++idx;
+        }
 
-            if (rval == 0)
-            {
-                connection_mtx.lock();
-                connections.erase(client);
-                connection_mtx.unlock();
-                clog << "Ending connection" << endl;
-            }
-            else if (rval < 0)
-            {
-                if (errno != EAGAIN)
-                {
-                    cerr << "Read failed" << endl;
-                }
-            }
-            else
-            {
-                for (processor_t process : processors)
-                {
-                    process(buff, rval);
-                }
+        rval = poll(fds.data(), fds.size(), 0);
 
-                if (send(server->sock(), buff, rval, 0) < 0)
+        if (rval < 0)
+        {
+            cerr << "Poll failed" << endl;
+            continue;
+        }
+
+        for (idx = 0; idx < fds.size(); ++idx)
+        {
+            if (fds[idx].revents & POLLIN)
+            {
+                socket_p client = fd2con[idx];
+                socket_p server = connections_ro[client];
+
+                rval = recv(client->sock(), buff, sizeof(buff), 0);
+
+                if (rval == 0)
                 {
-                    clog << "Send failed" << endl;
-                    continue;
+                    connection_mtx.lock();
+                    connections.erase(client);
+                    connection_mtx.unlock();
+                    clog << "Ending connection" << endl;
+                }
+                else if (rval < 0)
+                {
+                    if (errno != EAGAIN)
+                    {
+                        cerr << "Read failed" << endl;
+                    }
+                }
+                else
+                {
+                    for (processor_t process : processors)
+                    {
+                        process(buff, rval);
+                    }
+
+                    if (send(server->sock(), buff, rval, 0) < 0)
+                    {
+                        clog << "Send failed" << endl;
+                        continue;
+                    }
                 }
             }
         }
